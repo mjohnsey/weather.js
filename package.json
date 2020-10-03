@@ -1,0 +1,29 @@
+{
+  "name": "weather.js",
+  "version": "1.0.0",
+  "description": "JS library for weather info",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjohnsey/weather.js.git"
+  },
+  "keywords": [
+    "weather"
+  ],
+  "author": "Michael Johnsey",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mjohnsey/weather.js/issues"
+  },
+  "homepage": "https://github.com/mjohnsey/weather.js#readme",
+  "dependencies": {
+    "lodash": "^4.17.20"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.161",
+    "typescript": "^4.0.3"
+  }
+}

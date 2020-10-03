@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "importHelpers": true,
+        "module": "commonjs",
+        "outDir": "dist",
+        "strict": true,
+        "target": "es2017",
+        "experimentalDecorators": true,
+        "skipLibCheck": true
+    },
+    "include": [
+        "lib/**/*"
+    ]
+}
