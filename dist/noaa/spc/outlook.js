@@ -4,8 +4,8 @@ exports.Outlook = exports.OutlookType = exports.SevereWeatherTypes = exports.Out
 const _ = require("lodash");
 var OutlookBaseType;
 (function (OutlookBaseType) {
-    OutlookBaseType[OutlookBaseType["CATEGORICAL"] = 0] = "CATEGORICAL";
-    OutlookBaseType[OutlookBaseType["PROBABILISTIC"] = 1] = "PROBABILISTIC";
+    OutlookBaseType["CATEGORICAL"] = "CATEGORICAL";
+    OutlookBaseType["PROBABILISTIC"] = "PROBABILISTIC";
 })(OutlookBaseType = exports.OutlookBaseType || (exports.OutlookBaseType = {}));
 var SevereWeatherTypes;
 (function (SevereWeatherTypes) {
@@ -25,19 +25,28 @@ class OutlookType {
     static getOutlookTypes() {
         const types = [];
         types.push(new OutlookType(OutlookBaseType.CATEGORICAL, SevereWeatherTypes.GENERAL, false, [1, 2, 3]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.TORNADO, false, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.TORNADO, true, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.HAIL, false, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.HAIL, true, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.WIND, false, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.WIND, true, [1]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.GENERAL, false, [2, 3]));
-        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.GENERAL, true, [2, 3]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.TORNADO, false, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.TORNADO, true, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.HAIL, false, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.HAIL, true, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.WIND, false, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.WIND, true, [1, 2]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.GENERAL, false, [3]));
+        types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.GENERAL, true, [3]));
         types.push(new OutlookType(OutlookBaseType.PROBABILISTIC, SevereWeatherTypes.GENERAL, false, [4, 5, 6, 7, 8], true));
         return types;
     }
     toString() {
-        return '';
+        let weatherTypePrettyName = 'General Severe';
+        if (this.weatherType !== SevereWeatherTypes.GENERAL) {
+            if (this.weatherType === SevereWeatherTypes.TORNADO) {
+                weatherTypePrettyName = 'Tornado';
+            }
+            else {
+                weatherTypePrettyName = _.startCase(this.weatherType);
+            }
+        }
+        return `${weatherTypePrettyName}-${_.startCase(this.baseType)}`;
     }
     isDaySupported(day) {
         return this.daysSupported.includes(day);
@@ -55,7 +64,10 @@ class OutlookType {
         if (this.isSignificant) {
             result += 'sig';
         }
-        result += this.weatherType === SevereWeatherTypes.GENERAL ? 'prob' : this.weatherType;
+        result +=
+            this.weatherType === SevereWeatherTypes.GENERAL
+                ? 'prob'
+                : this.weatherType;
         return result;
     }
     textTypeString() {
@@ -76,12 +88,14 @@ class Outlook {
         this.isLayered = layered;
     }
     static baseUrl(isExperimental = false) {
-        return isExperimental ? 'https://www.spc.noaa.gov/products/exper/day4-8' : 'https://www.spc.noaa.gov/products/outlook';
+        return isExperimental
+            ? 'https://www.spc.noaa.gov/products/exper/day4-8'
+            : 'https://www.spc.noaa.gov/products/outlook';
     }
     static getOutlooks() {
         const types = OutlookType.getOutlookTypes();
         const outlooks = [];
-        _.each(types, type => {
+        _.each(types, (type) => {
             _.each(type.daysSupported, (day) => {
                 const out = new Outlook(type, day, false);
                 outlooks.push(out);
@@ -112,6 +126,8 @@ class Outlook {
             case SevereWeatherTypes.WIND:
                 type = 'probotlk_wind';
                 break;
+            default:
+                throw new Error(`Unknown weather type ${this.outlookType.weatherType}`);
         }
         const url = `${base}/day${this.day}${type}.gif`;
         return url;
@@ -124,6 +140,9 @@ class Outlook {
         const type = this.outlookType.textTypeString();
         const url = `${urlBase}/day${this.day}${type}.html`;
         return url;
+    }
+    name() {
+        return `${this.outlookType.toString()} Day ${this.day}`;
     }
 }
 exports.Outlook = Outlook;

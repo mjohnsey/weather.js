@@ -1,50 +1,81 @@
-import {Outlook} from './outlook'
-
 import axios from 'axios'
-import * as moment from 'moment'
-import 'moment-timezone'
-import {Coord, point, Position} from '@turf/helpers'
+import {
+  Coord,
+  Point,
+  point,
+  Position,
+  Feature,
+  Properties,
+} from '@turf/helpers'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 
 import * as _ from 'lodash'
+import { Moment } from 'moment'
+
+import { Outlook, SevereWeatherTypes } from './outlook'
+import { tsToTime } from './utils'
+
+export class ForecastHit {
+  // eslint-disable-next-line no-useless-constructor
+  constructor(
+    public readonly forecastType: string,
+    public readonly severeType: SevereWeatherTypes,
+    public readonly imageUrl: string,
+    public readonly day: number,
+    public readonly validTime: Moment,
+    public readonly expireTime: Moment,
+    public readonly issueTime: Moment,
+    public readonly geojsonUrl: string,
+    public readonly textViewUrl: string,
+  ) {}
+
+  public isSevere(): boolean {
+    return this.severeType !== SevereWeatherTypes.GENERAL
+  }
+}
 
 export class NoaaSpcStore {
   public homeLocationName: string
 
   public homeLocationLatitude: number
 
-  public  homeLocationLongitude: number
+  public homeLocationLongitude: number
 
-  public static tsToTime(rawTime: string) {
-    // 202004151200
-    const timeFormat = 'YYYYMMDDHHmmZ'
-    return moment(rawTime, timeFormat).tz('America/Chicago')
-  }
-
-  constructor(homeLocationName: string, homeLocationLatitude: number, homeLocationLongitude: number) {
+  constructor(
+    homeLocationName: string,
+    homeLocationLatitude: number,
+    homeLocationLongitude: number,
+  ) {
     this.homeLocationName = homeLocationName
     this.homeLocationLatitude = homeLocationLatitude
     this.homeLocationLongitude = homeLocationLongitude
   }
 
-  public async checkAllForecastsForHome(): Promise<any[]> {
-    const hits = await NoaaSpcStore.checkAllForecasts(this.homeLocationLatitude, this.homeLocationLongitude)
+  public async checkAllForecastsForHome(): Promise<ForecastHit[]> {
+    const hits = await NoaaSpcStore.checkAllForecasts(
+      this.homeLocationLatitude,
+      this.homeLocationLongitude,
+    )
     return hits
   }
 
-  static async getGeojson(outlook: Outlook) {
+  static async getGeojson(outlook: Outlook): Promise<any> {
     const url = outlook.geometryUrl()
     const response = await axios.get(url)
     return response.data
   }
 
-  static async isPointInForecast(outlook: Outlook, coords: Coord) {
-    const geojson = await NoaaSpcStore.getGeojson(outlook)
-    const features = geojson.features
+  static async getGeojsonFromUrlViaAxios(url: string): Promise<any> {
+    const response = await axios.get(url)
+    return response.data
+  }
+
+  static async isPointInForecast(coords: Coord, geojson: any) {
+    const { features } = geojson
     if (_.isEmpty(features)) {
       return undefined
     }
-    const hit = _.find(geojson.features, feature => {
+    const hit = _.find(geojson.features, (feature) => {
       const geom = feature.geometry
       // This is when the spc doesn't have any geoms for a given outlook
       if (geom?.type === 'GeometryCollection') {
@@ -58,37 +89,72 @@ export class NoaaSpcStore {
     return hit
   }
 
-  static async checkAllForecasts(lat: number, lng: number) {
-    const coordsToCheck = point([lat, lng])
+  static async processForecastGeojson(
+    location: Feature<Point, Properties>,
+    outlook: Outlook,
+    geojson: any,
+  ): Promise<ForecastHit | null> {
+    const pointInForecast = await NoaaSpcStore.isPointInForecast(
+      location.geometry?.coordinates as Position,
+      geojson,
+    )
+    if (pointInForecast) {
+      const forecastType = pointInForecast.properties.LABEL2
+      const imageUrl = outlook.imageUrl()
+      const { day } = outlook
+      const rawValidTime = pointInForecast.properties.VALID
+      const validTime = tsToTime(`${rawValidTime}Z`)
+      const rawExpireTime = pointInForecast.properties.EXPIRE
+      const expireTime = tsToTime(`${rawExpireTime}Z`)
+      const rawIssueTime = pointInForecast.properties.ISSUE
+      const issueTime = tsToTime(`${rawIssueTime}Z`)
+      const geojsonUrl = outlook.geometryUrl()
+      const textViewUrl = outlook.webUrl()
+      const forecastHit = new ForecastHit(
+        forecastType,
+        outlook.outlookType.weatherType,
+        imageUrl,
+        day,
+        validTime,
+        expireTime,
+        issueTime,
+        geojsonUrl,
+        textViewUrl,
+      )
+      return forecastHit
+    }
+    return null
+  }
+
+  static getPoint(lat: number, lng: number): Feature<Point, Properties> {
+    return point([lng, lat])
+  }
+
+  static async checkAllForecasts(
+    lat: number,
+    lng: number,
+  ): Promise<ForecastHit[]> {
+    const coordsToCheck = NoaaSpcStore.getPoint(lat, lng)
     const outlooks = Outlook.getOutlooks()
-    const hits: any[] = []
-    await Promise.all(_.map(outlooks, async outlook => {
-      try {
-        const pointInForecast = await NoaaSpcStore.isPointInForecast(outlook, (coordsToCheck.geometry?.coordinates as Position))
-        const result: any = {}
-        if (pointInForecast) {
-          const forecastType = pointInForecast.properties.LABEL2
-          result.forecastType = forecastType
-          result.severeType = outlook.outlookType.weatherType
-          const imageUrl = outlook.imageUrl()
-          result.imageUrl = imageUrl
-          const day = outlook.day
-          result.day = day
-          const rawValidTime = pointInForecast.properties.VALID
-          result.validTime = NoaaSpcStore.tsToTime(`${rawValidTime}Z`)
-          const rawExpireTime = pointInForecast.properties.EXPIRE
-          result.expireTime = NoaaSpcStore.tsToTime(`${rawExpireTime}Z`)
-          const rawIssueTime = pointInForecast.properties.ISSUE
-          result.issueTime = NoaaSpcStore.tsToTime(`${rawIssueTime}Z`)
-          result.geojsonUrl = outlook.geometryUrl()
-          result.textViewUrl = outlook.webUrl()
-          hits.push(result)
+    const hits: ForecastHit[] = []
+    await Promise.all(
+      _.map(outlooks, async (outlook) => {
+        // eslint-disable-next-line no-useless-catch
+        try {
+          const forecastHit = await NoaaSpcStore.processForecastGeojson(
+            coordsToCheck,
+            outlook,
+            await NoaaSpcStore.getGeojson(outlook),
+          )
+          if (forecastHit) {
+            hits.push(forecastHit)
+          }
+        } catch (error) {
+          // console.log(outlook.geometryUrl())
+          throw error
         }
-      } catch (error) {
-        // console.log(outlook.geometryUrl())
-        throw error
-      }
-    }))
+      }),
+    )
     return hits
   }
 }

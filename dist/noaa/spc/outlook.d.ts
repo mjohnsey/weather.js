@@ -1,6 +1,6 @@
 export declare enum OutlookBaseType {
-    CATEGORICAL = 0,
-    PROBABILISTIC = 1
+    CATEGORICAL = "CATEGORICAL",
+    PROBABILISTIC = "PROBABILISTIC"
 }
 export declare enum SevereWeatherTypes {
     GENERAL = "",
@@ -31,4 +31,5 @@ export declare class Outlook {
     geometryUrl(ending?: string): string;
     imageUrl(): string;
     webUrl(): string;
+    name(): string;
 }
