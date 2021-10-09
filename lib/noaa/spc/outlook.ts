@@ -13,7 +13,7 @@ export enum SevereWeatherTypes {
 }
 
 export class OutlookType {
-  public static getOutlookTypes() {
+  public static getOutlookTypes(): OutlookType[] {
     const types: OutlookType[] = []
     types.push(
       new OutlookType(
@@ -135,7 +135,7 @@ export class OutlookType {
     return `${weatherTypePrettyName}-${_.startCase(this.baseType)}`
   }
 
-  public isDaySupported(day: number) {
+  public isDaySupported(day: number): boolean {
     return this.daysSupported.includes(day)
   }
 
@@ -202,7 +202,7 @@ export class Outlook {
     this.isLayered = layered
   }
 
-  public geometryUrl(ending = 'geojson') {
+  public geometryUrl(ending = 'geojson'): string {
     const urlBase = Outlook.baseUrl(this.outlookType.isExperimental)
     const type = this.outlookType.geometryTypeString()
     const layerString = this.isLayered ? 'lyr' : 'nolyr'
@@ -210,7 +210,7 @@ export class Outlook {
     return url
   }
 
-  public imageUrl() {
+  public imageUrl(): string {
     const base = Outlook.baseUrl(this.outlookType.isExperimental)
     let type = ''
     switch (this.outlookType.weatherType) {
@@ -233,7 +233,7 @@ export class Outlook {
     return url
   }
 
-  public webUrl() {
+  public webUrl(): string {
     const urlBase = Outlook.baseUrl(this.outlookType.isExperimental)
     if (this.outlookType.isExperimental) {
       return urlBase
@@ -243,7 +243,11 @@ export class Outlook {
     return url
   }
 
-  public name() {
+  public name(): string {
     return `${this.outlookType.toString()} Day ${this.day}`
+  }
+
+  public id(): string {
+    return _.kebabCase(this.name())
   }
 }
