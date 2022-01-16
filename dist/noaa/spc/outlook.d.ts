@@ -32,4 +32,5 @@ export declare class Outlook {
     imageUrl(): string;
     webUrl(): string;
     name(): string;
+    id(): string;
 }

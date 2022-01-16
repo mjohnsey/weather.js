@@ -144,5 +144,8 @@ class Outlook {
     name() {
         return `${this.outlookType.toString()} Day ${this.day}`;
     }
+    id() {
+        return _.kebabCase(this.name());
+    }
 }
 exports.Outlook = Outlook;
